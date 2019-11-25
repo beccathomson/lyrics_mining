@@ -1,5 +1,4 @@
 import sys
-from os import listdir
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -8,27 +7,13 @@ from sklearn.pipeline import Pipeline
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import SGDClassifier
 from  sklearn.metrics import accuracy_score
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-stop_words = set(stopwords.words('english'))
-
-
-def round_to(val, base):
-    return base * round(val/base)
 
 
 def main():
-    df = pd.read_csv("./files/clean_lyrics.csv", header=0, index_col=0)
+    df = pd.read_csv("./clean_lyrics.csv", header=0, index_col=0)
 
-    i = 0
-    X = []
-    y = []
-    for row in df.read():
-            index = row[0]
-            # genre = row[4]
-            X.append(row[5])
-            # y.append(round_to(df.loc[name, 'Score'], 5))
-            y.append(df.loc[index, 'genre'])
+    X = df['lyrics'].tolist()
+    y = df['genre'].tolist()
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.10, random_state=99)
 

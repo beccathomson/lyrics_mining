@@ -1,35 +1,24 @@
-import csv
-import os
+from sys import exit
+import pandas as pd
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-
-stop_words = set(stopwords.words('english'))
+from nltk.corpus import words
+stop_words = set(w.lower() for w in stopwords.words('english'))
+english_vocab = set(w.lower() for w in words.words())
 
 
 def main():
-    try:
-        os.mkdir("files")
-    except Exception:
-        pass
-
-    with open("./files/raw_lyrics.csv", "r", encoding="utf8") as f:
-        reader = csv.reader(f)
-        clean_rows = [["index", "song", "year", "artist", "genre"]]
-        i = 0
-        for row in reader:
-            if i > 10:
-                break
-            i += 1
-            if len(row) < 5 or len(row[5].split()) < 5:
-                continue
-            tokens = word_tokenize(row[5])
-            clean_rows.append(row[:-1] + [' '.join([tok.lower() for tok in tokens if
-                                                    tok.isalpha() and tok.lower() not in stop_words])])
-
-    with open("./files/clean_lyrics.csv", "w", encoding="utf8", newline="\n") as clean_file:
-        csv_writer = csv.writer(clean_file, delimiter=",")
-        csv_writer.writerows(clean_rows)
+    df = pd.read_csv("./raw_lyrics.csv", header=0, index_col=0)
+    print('Loaded file into dataframe')
+    df.dropna(inplace=True)
+    print('Dropped rows with missing values')
+    df['lyrics'] = df['lyrics'].map(lambda lyric: ' '.join([tok.lower() for tok in word_tokenize(lyric) if
+                                                    tok.isalpha() and tok.lower() not in stop_words and tok.lower() in english_vocab]))
+    print('Cleaned lyrics')
+    df.to_csv('./clean_lyrics.csv', sep=',', encoding='utf-8', index=False)
+    print('Wrote to csv file')
 
 
 if __name__ == '__main__':
     main()
+    exit()
