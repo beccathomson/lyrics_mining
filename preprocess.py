@@ -3,6 +3,7 @@ import pandas as pd
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.corpus import words
+
 stop_words = set(w.lower() for w in stopwords.words('english'))
 english_vocab = set(w.lower() for w in words.words())
 
@@ -12,8 +13,10 @@ def main():
     print('Loaded file into dataframe')
     df.dropna(inplace=True)
     print('Dropped rows with missing values')
+    df = df[~df.genre.isin(["Not Available", "Other"])]
+    print("Dropped rows with Not Available, Other as genre")
     df['lyrics'] = df['lyrics'].map(lambda lyric: ' '.join([tok.lower() for tok in word_tokenize(lyric) if
-                                                    tok.isalpha() and tok.lower() not in stop_words and tok.lower() in english_vocab]))
+                                                                tok.isalpha() and tok.lower() not in stop_words and tok.lower() in english_vocab]))
     print('Cleaned lyrics')
     df.to_csv('./clean_lyrics.csv', sep=',', encoding='utf-8', index=False)
     print('Wrote to csv file')
