@@ -89,8 +89,7 @@ def do_random_forest(x_train, x_test, y_train, y_test):
     ])
     forest_clf.fit(x_train, y_train)
     forest_predicted = forest_clf.predict(x_test)
-    print(mean_squared_error(y_test, forest_predicted))
-    print(mean_squared_log_error(y_test, forest_predicted))
+    # print(mean_squared_error(y_test, forest_predicted))
     print(accuracy_score(y_test, forest_predicted))
     return forest_predicted
 
