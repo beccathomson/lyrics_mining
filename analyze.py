@@ -6,8 +6,7 @@ from sklearn import preprocessing
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.linear_model import SGDClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, mean_squared_log_error, \
-    mean_squared_error
+from sklearn.metrics import accuracy_score, confusion_matrix, mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
@@ -56,17 +55,16 @@ def do_bayes(x_train, x_test, y_train, y_test):
 def do_metrics(y_test, classifiers):
     for classifier in classifiers:
         print(classifier)
-        sgd_cm = confusion_matrix(y_test, classifiers[classifier])
-        # print(sgd_cm) # full matrix
-        sgd_cm = sgd_cm.astype('float') / sgd_cm.sum(axis=1)[:, np.newaxis]
-        print(sgd_cm.diagonal())  # Accuracy scores for each label
+        cm = confusion_matrix(y_test, classifiers[classifier])
+        # print(cm) # full matrix
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print(cm.diagonal())  # Accuracy scores for each label
         # print(classification_report(y_test, classifiers[classifier]))  # Metrics
 
 
 def predict_genre(df):
-    # remove genres with lowest accuracy
-    x = df.loc[~df.genre.isin(['Electronic', 'R&B', 'Indie'])]['lyrics'].astype('U')
-    y = df.loc[~df.genre.isin(['Electronic', 'R&B', 'Indie'])]['genre'].astype('U')
+    x = df['lyrics'].astype('U')
+    y = df['genre'].astype('U')
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.10, random_state=99)
 
@@ -96,6 +94,8 @@ def do_random_forest(x_train, x_test, y_train, y_test):
 
 def main():
     df = pd.read_csv("./clean_lyrics.csv", header=0)
+    # remove genres with lowest accuracy
+    df = df[~df.genre.isin(['Electronic', 'R&B', 'Indie'])]
     # encode labels
     le = preprocessing.LabelEncoder()
     df['genre'] = le.fit_transform(df.genre.values)
