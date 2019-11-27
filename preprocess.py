@@ -11,7 +11,11 @@ english_vocab = set(w.lower() for w in words.words())
 def main():
     df = pd.read_csv("./raw_lyrics.csv", header=0, index_col=0)
     print('Loaded file into dataframe')
-    df.dropna(inplace=True)
+    del df['song']
+    del df['year']
+    del df['artist']
+    print('Dropped columns that are not needed for analysis')
+    df.dropna(subset=['genre', 'lyrics'], axis=0, inplace=True)
     print('Dropped rows with missing values')
     df = df[~df.genre.isin(["Not Available", "Other"])]
     print("Dropped rows with Not Available, Other as genre")
