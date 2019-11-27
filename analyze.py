@@ -73,7 +73,7 @@ def predict_genre(df):
     forest_predicted = do_random_forest(x_train, x_test, y_train, y_test)
     lin_predicted = do_linear(x_train, x_test, y_train, y_test)
     sgd_predicted = do_grad_descent(x_train, x_test, y_train, y_test)
-    bayes_predicted = do_bayes(x_train, x_test, y_train, y_test) # TODO: oversampling for bayes (no class_weight param)
+    bayes_predicted = do_bayes(x_train, x_test, y_train, y_test)  # TODO: oversampling for bayes (no class_weight param)
 
     do_metrics(y_test, {'linear SVC': lin_predicted, 'grad descent': sgd_predicted, 'bayes': bayes_predicted,
                         'forest': forest_predicted})
@@ -95,24 +95,12 @@ def do_random_forest(x_train, x_test, y_train, y_test):
     return forest_predicted
 
 
-def predict_year(df):
-    x = df.loc[~df.genre.isin(['Electronic', 'R&B', 'Indie'])]['lyrics'].astype('U')
-    y = df.loc[~df.genre.isin(['Electronic', 'R&B', 'Indie'])]['year'].astype('U')
-
-    # x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.10, random_state=99)
-    #
-    # lin_predicted = do_linear(x_train, x_test, y_train, y_test)
-    # forest_predicted = do_random_forest(x_train, x_test, y_train, y_test)
-    # sgd_predicted = do_grad_descent(x_train, x_test, y_train, y_test)
-
-
 def main():
-    df = pd.read_csv("./clean_lyrics.csv", header=0, index_col=0)
+    df = pd.read_csv("./clean_lyrics.csv", header=0)
     # encode labels
     le = preprocessing.LabelEncoder()
     df['genre'] = le.fit_transform(df.genre.values)
     predict_genre(df)
-    # predict_year(df)
 
 
 if __name__ == "__main__":
