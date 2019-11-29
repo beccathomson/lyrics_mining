@@ -2,131 +2,87 @@ import sys
 
 import numpy as np
 import pandas as pd
+from imblearn.over_sampling import RandomOverSampler
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_selection import chi2
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC
 from sklearn.tree import DecisionTreeClassifier
 
 
-def do_linear(x_train, x_test, y_train, y_test):
-    print("linear SVC:")
-    lin_predicted = Pipeline([('vect', CountVectorizer()),
-                              ('tfidf', TfidfTransformer(use_idf=True)),
-                              ('clf', LinearSVC(class_weight='balanced'))
-                              ])
-    lin_predicted.fit(x_train, y_train)
-    lin_predicted = lin_predicted.predict(x_test)
-    print(accuracy_score(lin_predicted, y_test))
-    return lin_predicted
+def get_correlated_terms(x, y):
+    n = 5
+    features = x.toarray()
+    genre_codes = sorted(set(y.astype(int)))
+    genre_names = le.inverse_transform(genre_codes)
+    for code in genre_codes:  # for each genre
+        print(genre_names[code])
+        features_chi2 = chi2(features, y == code)  # get features for songs in genre # works but is SUPER slow
+        print("got chi features")
+        indices = np.argsort(features_chi2[0])
+        print("got indices")
+        feature_names = np.array(tfidf.get_feature_names())[indices]
+        print("Most correllated terms: " + str(genre_names[code]))
+        print("\n".join(feature_names[-n:]))
 
 
-def do_grad_descent(x_train, x_test, y_train, y_test):
-    print("stochastic grad descent:")
-    sgd_clf = Pipeline([
-        ('vect', CountVectorizer()),
-        ('tfidf', TfidfTransformer()),
-        ('clf',
-         SGDClassifier(loss='log', penalty='l2', alpha=1e-3, random_state=42, max_iter=30, class_weight='balanced'))
-    ])
-    sgd_clf.fit(x_train, y_train)
-    sgd_predicted = sgd_clf.predict(x_test)
-    print(accuracy_score(y_test, sgd_predicted))
-    return sgd_predicted
+def predict_genre(x, y):
+    linear_clf = forest_clf = sgd_clf = bayes_clf = tree_clf = None # for testing
 
+    x = tfidf.fit_transform(x, y) # removes stopwords based on frequency
+    print("Cleaned lyrics")
+    ros = RandomOverSampler(random_state=42) # necessary for multinomial bayes only
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.15, random_state=99)
+    #
+    linear_clf = LinearSVC(class_weight='balanced')
+    forest_clf = RandomForestClassifier(class_weight='balanced', n_estimators=12, max_depth=40)
+    sgd_clf = SGDClassifier(class_weight='balanced')
+    bayes_clf = MultinomialNB()
+    tree_clf = DecisionTreeClassifier(max_depth=12, class_weight='balanced')
 
-def do_bayes(x_train, x_test, y_train, y_test):
-    print("multinomial naive bayes:")
-    mnb_clf = Pipeline([
-        ('vect', CountVectorizer()),
-        ('tfidf', TfidfTransformer()),  # by default applies inverse document weighting
-        ('clf', MultinomialNB(alpha=0.1, fit_prior=False)),
-    ])
-    mnb_clf.fit(x_train, y_train)
-    mnb_predicted = mnb_clf.predict(x_test)
-    print(accuracy_score(y_test, mnb_predicted))
-    return mnb_predicted
+    classifiers = {'LinearSVC': linear_clf, 'RandomForestClassifier': forest_clf, 'SGDClassifier': sgd_clf,
+                   'MultinomialNB': bayes_clf,
+                   'DecisionTreeClassifier': tree_clf}
 
+    genre_codes = set(y.astype(int))
+    genre_names = le.inverse_transform(list(genre_codes))
 
-def evaluate(y_test, predictions):
-    print("\nMetrics: ")
-    y_test = le.inverse_transform(y_test.astype('int'))  # previously unseen labels?
-
-    labels = list(sorted(set(y_test)))
-    for classifier in predictions:
-        if predictions[classifier] is None:
+    for val in classifiers:
+        if classifiers[val] is None: # for testing
             continue
-        print(classifier)
-        y_pred = predictions[classifier]
-        y_pred = le.inverse_transform(y_pred.astype('int'))
-        print(str(labels))  # print labels
-        cm = confusion_matrix(y_test, y_pred, labels)
+        if val == 'MultinomialNB': # only oversample for multinomial
+            x_train, y_train = ros.fit_resample(x_train, y_train)
+        print(val)
+        classifiers[val].fit(x_train, y_train)
+        y_pred = classifiers[val].predict(x_test)
+        print(accuracy_score(y_test, y_pred))
+        print(str(genre_names))  # print labels
+        genre_codes = [str(code) for code in genre_codes]
+        cm = confusion_matrix(y_test, y_pred, genre_codes)
         # print(cm) # full matrix
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
         print(cm.diagonal())  # Accuracy scores for each label
         # print(classification_report(y_test, classifiers[classifier]))
 
 
-def do_decision_tree(x_train, x_test, y_train, y_test):
-    print("decision tree")
-    tree = Pipeline([
-        ('vect', CountVectorizer()),
-        ('tfidf', TfidfTransformer()),  # by default applies inverse document weighting
-        ('clf', DecisionTreeClassifier(max_depth=12, class_weight='balanced')),
-    ])
-    tree.fit(x_train, y_train)
-    tree_pred = tree.predict(x_test)
-    print(accuracy_score(y_test, tree_pred))
-    return tree_pred
+def main():
+    global le, tfidf
+    le = preprocessing.LabelEncoder()
+    tfidf = TfidfVectorizer(max_df=0.8, use_idf=True)
 
-
-def predict_genre(df):
-    forest_predicted = lin_predicted = sgd_predicted = bayes_predicted = tree_predicted = None
+    df = pd.read_csv("./clean_lyrics.csv", header=0)
+    df = df[~df.genre.isin(['Electronic', 'R&B', 'Indie'])]  # remove genres with lowest accuracy
+    df['genre'] = le.fit_transform(df.genre.values)  # encode labels
     x = df['lyrics'].astype('U')
     y = df['genre'].astype('U')
 
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.10, random_state=99)
-
-    # forest_predicted = do_random_forest(x_train, x_test, y_train, y_test)
-    # lin_predicted = do_linear(x_train, x_test, y_train, y_test)
-    # sgd_predicted = do_grad_descent(x_train, x_test, y_train, y_test)
-    # bayes_predicted = do_bayes(x_train, x_test, y_train, y_test)
-    # tree_predicted = do_decision_tree(x_train, x_test, y_train, y_test)
-
-    evaluate(y_test,
-             {'forest': forest_predicted, 'linear': lin_predicted, 'grad': sgd_predicted, 'bayes': bayes_predicted,
-              'dtree': tree_predicted})
-
-
-def do_random_forest(x_train, x_test, y_train, y_test):
-    print("random forest classifier:")
-    forest_clf = Pipeline([
-        ('vect', CountVectorizer()),
-        ('tfidf', TfidfTransformer()),  # by default applies inverse weights
-        ('clf',
-         RandomForestClassifier(n_estimators=10, class_weight='balanced', max_depth=50))
-    ])
-    forest_clf.fit(x_train, y_train)
-    forest_predicted = forest_clf.predict(x_test)
-    # print(mean_squared_error(y_test, forest_predicted))
-    print(accuracy_score(y_test, forest_predicted))
-    return forest_predicted
-
-
-def main():
-    df = pd.read_csv("./clean_lyrics.csv", header=0)
-    # remove genres with lowest accuracy
-    df = df[~df.genre.isin(['Electronic', 'R&B', 'Indie'])]
-    # encode labels
-    global le
-    le = preprocessing.LabelEncoder()
-    df['genre'] = le.fit_transform(df.genre.values)
-    predict_genre(df)
+    predict_genre(x, y)
+    # get_correlated_terms(x, y)
 
 
 if __name__ == "__main__":
